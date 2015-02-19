@@ -81,7 +81,8 @@ func (client * RPCClient)CreateAsyncRPC(jsonMessages []string) error{
 	for _,request :=range jsonMessages {
 		fmt.Println(request)
 		byteRequest = []byte(request)
-		replyCall :=client.connection.Go("RPCServer.Insert",byteRequest,&response,client.doneChan)
+		//The name of the class should be in config file
+		replyCall :=client.connection.Go("RPCMethod.Insert",byteRequest,&response,client.doneChan)
 		if replyCall.Error!=nil{
 			return replyCall.Error 
 		}
