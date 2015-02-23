@@ -82,7 +82,7 @@ func (client * RPCClient)CreateAsyncRPC(jsonMessages []string) error{
 		fmt.Println(request)
 		byteRequest = []byte(request)
 		//The name of the class should be in config file
-		replyCall :=client.connection.Go("RPCMethod.Insert",byteRequest,&response,client.doneChan)
+		replyCall :=client.connection.Go("RPCMethod.DICT3Service",byteRequest,&response,client.doneChan)
 		if replyCall.Error!=nil{
 			return replyCall.Error 
 		}
