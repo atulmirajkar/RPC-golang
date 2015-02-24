@@ -1,7 +1,7 @@
 package main
 
 import(
-	"RPC-golang/rpcclient"
+	"github.com/atulmirajkar/RPC-golang/rpcclient"
 	"fmt"
 	"os"
 	"strconv"

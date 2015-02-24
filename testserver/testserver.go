@@ -3,7 +3,7 @@ package main
 import(
 	"fmt"
 	"os"
-	"RPC-golang/rpcserver"
+	"github.com/atulmirajkar/RPC-golang/rpcserver"
 )
 func main(){
 
