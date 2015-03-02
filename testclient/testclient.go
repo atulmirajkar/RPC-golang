@@ -5,6 +5,7 @@ import(
 	"fmt"
 	"os"
 	"strconv"
+	"bufio"
 )
 
 func main(){
@@ -32,15 +33,22 @@ func main(){
 		return
 	
 	} 
+	jsonMessages := make([]string,0,10)
+	//use bufio to readlines from file
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		jsonMessages = append(jsonMessages,scanner.Text())
+	}
 	
+	numMessages :=len(jsonMessages)
 	//make asychronous calls
-	if err := client.CreateAsyncRPC(os.Args[2:], serverName); err!=nil{
+	if err := client.CreateAsyncRPC(jsonMessages[0:], serverName); err!=nil{
 		fmt.Println(err)
 		return
 	}
 	
 	//process replies from server
-	if err := client.ProcessReplies(len(os.Args)-2); err!=nil{
+	if err := client.ProcessReplies(numMessages); err!=nil{
 		fmt.Println(err)
 		return
 	}
