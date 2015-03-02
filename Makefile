@@ -18,4 +18,6 @@ deps:
 	go get $(DEPENDENCIES)
 
 clean:
-	go clean -i $(PACKAGES) $(DEPENDENCIES)
+	go clean -i -r -x $(PACKAGES) $(DEPENDENCIES)
+	rm -rf $(GOBIN)/testclient
+	rm -rf $(GOBIN)/testserver
