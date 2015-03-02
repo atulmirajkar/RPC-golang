@@ -123,14 +123,16 @@ func (client *RPCClient) CreateAsyncRPC(jsonMessages []string, serverName string
 		if err := json.Unmarshal(byteRequest, &reqPar); err != nil {
 			customError := errors.New("Message request unmarshalling error:" + err.Error())
 			fmt.Println(customError)
-			return customError
+			//return customError
+			continue
 
 		}
 
 		//fmt.Println("Request",reqPar)
 		if err := extractMethodName(byteRequest, &rpcFunction); err != nil {
 			fmt.Println(err)
-			return err
+			//return err
+			continue
 		}
 		rpcServerAndFunction := serverName + "." + rpcFunction
 		response := new(ResponseParameters)
