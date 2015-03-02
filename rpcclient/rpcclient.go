@@ -118,17 +118,6 @@ func (client * RPCClient)CreateAsyncRPC(jsonMessages []string, serverName string
 	
 	//directly send jsonmessages to the server asynchronously
 	var rpcFunction string
-	//test
-	// byteRequest = []byte(jsonMessages[0])
-	// if err :=extractMethodName(byteRequest,&rpcFunction); err!=nil{
-	// 	fmt.Println(err)
-	// 	return err
-	// }
-	// rpcServerAndFunction := serverName + "." + rpcFunction
-		
-	// replyCall :=<-client.connection.Go(rpcServerAndFunction,byteRequest,&response,nil).Done
-	// client.doneChan = replyCall.Done
-	//test
 	for _,request :=range jsonMessages {
 	//for _,request :=range jsonMessages[1:] {	
 		//fmt.Println(request)
