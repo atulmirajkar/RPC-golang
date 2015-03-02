@@ -5,11 +5,11 @@ DEPENDENCIES := github.com/boltdb/bolt
 
 all: install
 
-install: deps format build
+install: deps build
 	go install testserver/testserver.go
 	go install testclient/testclient.go 
 build:
-	go build $(PACKAGES)
+	go get -d github.com/atulmirajkar/RPC-golang
 
 format:
 	go fmt $(PACKAGES)
