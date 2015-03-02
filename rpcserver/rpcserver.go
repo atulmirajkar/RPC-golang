@@ -13,7 +13,7 @@ import (
 	"errors"
 	"sync"
 	"os"
-	//"time"
+	"time"
 )
 
 
@@ -24,9 +24,10 @@ type Dict3 struct{
 
 }
 
+
 type RequestParameters struct{
 	Method string `json:"method,omitempty"`
-	Params json.RawMessage `json: "params"`
+	Params []interface{} `json: "params"`
 	Id int `json" "id,omitempty"` 
 }
 
@@ -38,7 +39,6 @@ type ResponseParameters struct{
 
 
 //can be a file or a database
-//Here using a database
 type PersistentContainerType struct{
 	PersistentFilePath string `json:"file"`
 }
@@ -104,13 +104,11 @@ func (configObject *ConfigType)ReadConfig(configFilePath string) error{
 	return nil
 }
 /*****************************Memory Mapped Persitent FIle Operations using Bolt starts*******************************/
-func (rpcMethod *RPCMethod) insertOrUpdate(reqPar json.RawMessage) error{
-//Unmarshal into array of interfaces
+
+func (rpcMethod *RPCMethod) insertOrUpdate(reqPar []interface{}) error{
+
 	var parameters []interface{}
-	if err :=json.Unmarshal(reqPar, &parameters); err!=nil{
-		rpcMethod.rpcServer.logger.Println(err)
-		return err
-	}
+	parameters = reqPar
 		
 	//Use dict3 struct to unmarshall
 	dict3:=Dict3{} 
@@ -155,14 +153,12 @@ func (rpcMethod *RPCMethod) insertOrUpdate(reqPar json.RawMessage) error{
 	return nil
 	
 }
-func (rpcMethod *RPCMethod) insert(reqPar json.RawMessage, response *ResponseParameters) (error){
+
+func (rpcMethod *RPCMethod) insert(reqPar []interface{}, response *ResponseParameters) (error){
 	
 	//Unmarshal into array of interfaces
 	var parameters []interface{}
-	if err :=json.Unmarshal(reqPar, &parameters); err!=nil{
-		rpcMethod.rpcServer.logger.Println(err)
-		return err
-	}
+	parameters = reqPar
 		
 	//Use dict3 struct to unmarshall
 	dict3:=Dict3{} 
@@ -221,21 +217,12 @@ func (rpcMethod *RPCMethod) insert(reqPar json.RawMessage, response *ResponsePar
 			}
 			return nil
 		})
-		//Marshall the responseparameters
-		//Result []interface{} `json:"result"`
-		//Id int `json: "id"`
-		//Error int `json:"error"`
 		response.Result = make([]interface{},1)
 		response.Result[0] = "true" 
 		response.Error = nil
 		
 	}else{
-		//return an error
-		//Marshall the responseparameters
-		//Result []interface{} `json:"result"`
-		//Id int `json: "id"`
-		//Error int `json:"error"`
-		
+		//return an error	
 		response.Result = make([]interface{},1)
 		response.Result[0] = "false" 
 		response.Error = 1
@@ -248,13 +235,10 @@ func (rpcMethod *RPCMethod) insert(reqPar json.RawMessage, response *ResponsePar
 	return nil
 }
 
-func (rpcMethod * RPCMethod) delete(reqPar json.RawMessage) error{
-	//Unmarshal into array of interfaces
+
+func (rpcMethod * RPCMethod) delete(reqPar []interface{}) error{
 	var parameters []interface{}
-	if err :=json.Unmarshal(reqPar, &parameters); err!=nil{
-		rpcMethod.rpcServer.logger.Println(err)
-		return err
-	}
+	parameters = reqPar
 		
 	//Use dict3 struct to unmarshall
 	dict3:=Dict3{} 
@@ -375,13 +359,10 @@ func (rpcMethod * RPCMethod) listIDs(response * ResponseParameters) error{
 
 }
 
-func (rpcMethod * RPCMethod) lookup(reqPar json.RawMessage, response *ResponseParameters) error{
-	//Unmarshal into array of interfaces
+func (rpcMethod * RPCMethod) lookup(reqPar []interface{}, response *ResponseParameters) error{
+	
 	var parameters []interface{}
-	if err :=json.Unmarshal(reqPar, &parameters); err!=nil{
-		rpcMethod.rpcServer.logger.Println(err)
-		return err
-	}
+	parameters = reqPar
 		
 	//Use dict3 struct to unmarshall
 	dict3:=Dict3{} 
@@ -465,7 +446,7 @@ func (rpcMethod * RPCMethod) shutDown() error {
 /*****************************Exposed Wrappers to actual methods start**********************************************/
 
 //wrapper to insert
-func (rpcMethod * RPCMethod) Insert(jsonInput []byte,jsonOutput *[]byte) error{
+func (rpcMethod * RPCMethod) Insert(jsonInput RequestParameters,jsonOutput *ResponseParameters) error{
 	//Initialize rpcserver
 	var err error
 	err,rpcMethod.rpcServer = GetRPCServerInstance()
@@ -482,24 +463,11 @@ func (rpcMethod * RPCMethod) Insert(jsonInput []byte,jsonOutput *[]byte) error{
 	
 
 	defer rpcMethod.rpcServer.routineDone()
-	//Unmarshall the request in RequestParameters
-	var reqPar RequestParameters
-	/*
-	Method string `json:"Method"`
-	Params json.RawMessage `json: "params"`
-	Id int 'json" "id"' 
-        */
-	if err :=json.Unmarshal(jsonInput, &reqPar); err!=nil{
-		customError= errors.New("Message request unmarshalling error:" + err.Error())
-		rpcMethod.rpcServer.logger.Println(customError)
-		return customError
-		
-	}
-	rpcMethod.rpcServer.logger.Println(reqPar.Method)
+	rpcMethod.rpcServer.logger.Println(jsonInput.Method)
 
 	response:=new(ResponseParameters)
 
-	if err :=rpcMethod.insert(reqPar.Params,response); err!=nil{
+	if err :=rpcMethod.insert(jsonInput.Params,response); err!=nil{
 		rpcMethod.rpcServer.logger.Println(err)
 		response.Result = make([]interface{},1)
 		response.Result[0] = err
@@ -509,18 +477,20 @@ func (rpcMethod * RPCMethod) Insert(jsonInput []byte,jsonOutput *[]byte) error{
 	//the rest response is set by respective method 
 	//inserOrUpdate / delete / shutdown does not return anything
 	if response !=nil{
-		response.Id = reqPar.Id
+		response.Id = jsonInput.Id
+		*jsonOutput = *response
 		
-		//var jsonOutputTemp []byte
-		var err error
-		if (*jsonOutput), err = json.Marshal(response); err!=nil{
-			rpcMethod.rpcServer.logger.Println(err)
-			return err
-		}
-		rpcMethod.rpcServer.logger.Println(string(*jsonOutput))
+
+		rpcMethod.rpcServer.logger.Println("json output: ",*jsonOutput)
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.Encode(*jsonOutput)
+			
 	}else {
-		(*jsonOutput),_ = json.Marshal(&ResponseParameters{Result: nil, Id: -1, Error : nil})
+
+		*jsonOutput = ResponseParameters{Result: nil, Id: -1, Error : nil}
+
 	}
+	
 	
 	
 	
@@ -530,8 +500,8 @@ func (rpcMethod * RPCMethod) Insert(jsonInput []byte,jsonOutput *[]byte) error{
 }
 
 //wrapper to insertorupdate
-func (rpcMethod * RPCMethod) InsertOrUpdate(jsonInput []byte,jsonOutput *[]byte) error{
-//Initialize rpcserver
+func (rpcMethod * RPCMethod) InsertOrUpdate(jsonInput RequestParameters,jsonOutput *ResponseParameters) error{
+	//Initialize rpcserver
 	var err error
 	err,rpcMethod.rpcServer = GetRPCServerInstance()
 	var customError error
@@ -547,24 +517,11 @@ func (rpcMethod * RPCMethod) InsertOrUpdate(jsonInput []byte,jsonOutput *[]byte)
 	
 
 	defer rpcMethod.rpcServer.routineDone()
-	//Unmarshall the request in RequestParameters
-	var reqPar RequestParameters
-	/*
-	Method string `json:"Method"`
-	Params json.RawMessage `json: "params"`
-	Id int 'json" "id"' 
-        */
-	if err :=json.Unmarshal(jsonInput, &reqPar); err!=nil{
-		customError= errors.New("Message request unmarshalling error:" + err.Error())
-		rpcMethod.rpcServer.logger.Println(customError)
-		return customError
-		
-	}
-	rpcMethod.rpcServer.logger.Println(reqPar.Method)
+	rpcMethod.rpcServer.logger.Println(jsonInput.Method)
 
 	response:=new(ResponseParameters)
 
-	if err :=rpcMethod.insertOrUpdate(reqPar.Params); err!=nil{
+	if err :=rpcMethod.insertOrUpdate(jsonInput.Params); err!=nil{
 		//even though error, we are not returning anything
 		rpcMethod.rpcServer.logger.Println(err)
 	}
@@ -576,17 +533,18 @@ func (rpcMethod * RPCMethod) InsertOrUpdate(jsonInput []byte,jsonOutput *[]byte)
 	//the rest response is set by respective method 
 	//inserOrUpdate / delete / shutdown does not return anything
 	if response !=nil{
-		response.Id = reqPar.Id
+		response.Id = jsonInput.Id
+		*jsonOutput = *response
 		
-		//var jsonOutputTemp []byte
-		var err error
-		if (*jsonOutput), err = json.Marshal(response); err!=nil{
-			rpcMethod.rpcServer.logger.Println(err)
-			return err
-		}
-		rpcMethod.rpcServer.logger.Println(string(*jsonOutput))
+
+		rpcMethod.rpcServer.logger.Println("json output: ",*jsonOutput)
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.Encode(*jsonOutput)
+			
 	}else {
-		(*jsonOutput),_ = json.Marshal(&ResponseParameters{Result: nil, Id: -1, Error : nil})
+
+		*jsonOutput = ResponseParameters{Result: nil, Id: -1, Error : nil}
+
 	}
 	
 	
@@ -597,7 +555,7 @@ func (rpcMethod * RPCMethod) InsertOrUpdate(jsonInput []byte,jsonOutput *[]byte)
 
 
 //wrapper to delete
-func (rpcMethod * RPCMethod) Delete(jsonInput []byte,jsonOutput *[]byte) error{
+func (rpcMethod * RPCMethod) Delete(jsonInput RequestParameters,jsonOutput *ResponseParameters) error{
 	//Initialize rpcserver
 	var err error
 	err,rpcMethod.rpcServer = GetRPCServerInstance()
@@ -614,24 +572,11 @@ func (rpcMethod * RPCMethod) Delete(jsonInput []byte,jsonOutput *[]byte) error{
 	
 
 	defer rpcMethod.rpcServer.routineDone()
-	//Unmarshall the request in RequestParameters
-	var reqPar RequestParameters
-	/*
-	Method string `json:"Method"`
-	Params json.RawMessage `json: "params"`
-	Id int 'json" "id"' 
-        */
-	if err :=json.Unmarshal(jsonInput, &reqPar); err!=nil{
-		customError= errors.New("Message request unmarshalling error:" + err.Error())
-		rpcMethod.rpcServer.logger.Println(customError)
-		return customError
-		
-	}
-	rpcMethod.rpcServer.logger.Println(reqPar.Method)
+	rpcMethod.rpcServer.logger.Println(jsonInput.Method)
 
 	response:=new(ResponseParameters)
-
-	if err :=rpcMethod.delete(reqPar.Params); err!=nil{
+	
+	if err :=rpcMethod.delete(jsonInput.Params); err!=nil{
 		rpcMethod.rpcServer.logger.Println(err)
 		response.Result[0] = err
 		response.Error = 1
@@ -642,19 +587,19 @@ func (rpcMethod * RPCMethod) Delete(jsonInput []byte,jsonOutput *[]byte) error{
 	//the rest response is set by respective method 
 	//inserOrUpdate / delete / shutdown does not return anything
 	if response !=nil{
-		response.Id = reqPar.Id
+		response.Id = jsonInput.Id
+		*jsonOutput = *response
 		
-		//var jsonOutputTemp []byte
-		var err error
-		if (*jsonOutput), err = json.Marshal(response); err!=nil{
-			rpcMethod.rpcServer.logger.Println(err)
-			return err
-		}
-		rpcMethod.rpcServer.logger.Println(string(*jsonOutput))
+
+		rpcMethod.rpcServer.logger.Println("json output: ",*jsonOutput)
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.Encode(*jsonOutput)
+			
 	}else {
-		(*jsonOutput),_ = json.Marshal(&ResponseParameters{Result: nil, Id: -1, Error : nil})
+
+		*jsonOutput = ResponseParameters{Result: nil, Id: -1, Error : nil}
+
 	}
-	
 	
 	
 	return nil
@@ -663,8 +608,7 @@ func (rpcMethod * RPCMethod) Delete(jsonInput []byte,jsonOutput *[]byte) error{
 
 
 //wrapper to shutdown
-func (rpcMethod * RPCMethod) Shutdown(jsonInput []byte,jsonOutput *[]byte) error{
-	//Initialize rpcserver
+func (rpcMethod * RPCMethod) Shutdown(jsonInput RequestParameters,jsonOutput *ResponseParameters) error{
 	var err error
 	err,rpcMethod.rpcServer = GetRPCServerInstance()
 	var customError error
@@ -680,20 +624,7 @@ func (rpcMethod * RPCMethod) Shutdown(jsonInput []byte,jsonOutput *[]byte) error
 	
 
 	defer rpcMethod.rpcServer.routineDone()
-	//Unmarshall the request in RequestParameters
-	var reqPar RequestParameters
-	/*
-	Method string `json:"Method"`
-	Params json.RawMessage `json: "params"`
-	Id int 'json" "id"' 
-        */
-	if err :=json.Unmarshal(jsonInput, &reqPar); err!=nil{
-		customError= errors.New("Message request unmarshalling error:" + err.Error())
-		rpcMethod.rpcServer.logger.Println(customError)
-		return customError
-		
-	}
-	rpcMethod.rpcServer.logger.Println(reqPar.Method)
+	rpcMethod.rpcServer.logger.Println(jsonInput.Method)
 
 	response:=new(ResponseParameters)
 	
@@ -709,17 +640,18 @@ func (rpcMethod * RPCMethod) Shutdown(jsonInput []byte,jsonOutput *[]byte) error
 	//the rest response is set by respective method 
 	//inserOrUpdate / delete / shutdown does not return anything
 	if response !=nil{
-		response.Id = reqPar.Id
+		response.Id = jsonInput.Id
+		*jsonOutput = *response
 		
-		//var jsonOutputTemp []byte
-		var err error
-		if (*jsonOutput), err = json.Marshal(response); err!=nil{
-			rpcMethod.rpcServer.logger.Println(err)
-			return err
-		}
-		rpcMethod.rpcServer.logger.Println(string(*jsonOutput))
+
+		rpcMethod.rpcServer.logger.Println("json output: ",*jsonOutput)
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.Encode(*jsonOutput)
+			
 	}else {
-		(*jsonOutput),_ = json.Marshal(&ResponseParameters{Result: nil, Id: -1, Error : nil})
+
+		*jsonOutput = ResponseParameters{Result: nil, Id: -1, Error : nil}
+
 	}
 	
 	
@@ -729,8 +661,7 @@ func (rpcMethod * RPCMethod) Shutdown(jsonInput []byte,jsonOutput *[]byte) error
 }
 
 //wrapper to listkeys
-func (rpcMethod * RPCMethod) ListKeys(jsonInput []byte,jsonOutput *[]byte) error{
-	//Initialize rpcserver
+func (rpcMethod * RPCMethod) ListKeys(jsonInput RequestParameters,jsonOutput *ResponseParameters) error{
 	var err error
 	err,rpcMethod.rpcServer = GetRPCServerInstance()
 	var customError error
@@ -746,20 +677,7 @@ func (rpcMethod * RPCMethod) ListKeys(jsonInput []byte,jsonOutput *[]byte) error
 	
 
 	defer rpcMethod.rpcServer.routineDone()
-	//Unmarshall the request in RequestParameters
-	var reqPar RequestParameters
-	/*
-	Method string `json:"Method"`
-	Params json.RawMessage `json: "params"`
-	Id int 'json" "id"' 
-        */
-	if err :=json.Unmarshal(jsonInput, &reqPar); err!=nil{
-		customError= errors.New("Message request unmarshalling error:" + err.Error())
-		rpcMethod.rpcServer.logger.Println(customError)
-		return customError
-		
-	}
-	
+	rpcMethod.rpcServer.logger.Println(jsonInput.Method)
 
 	response:=new(ResponseParameters)
 
@@ -775,20 +693,22 @@ func (rpcMethod * RPCMethod) ListKeys(jsonInput []byte,jsonOutput *[]byte) error
 	//just set ID over here
 	//the rest response is set by respective method 
 	//inserOrUpdate / delete / shutdown does not return anything
-	if response !=nil{
-		response.Id = reqPar.Id
-		
-		//var jsonOutputTemp []byte
-		var err error
-		if (*jsonOutput), err = json.Marshal(response); err!=nil{
-			rpcMethod.rpcServer.logger.Println(err)
-			return err
-		}
-		rpcMethod.rpcServer.logger.Println(string(*jsonOutput))
-	}else {
-		(*jsonOutput),_ = json.Marshal(&ResponseParameters{Result: nil, Id: -1, Error : nil})
-	}
 	
+	if response !=nil{
+		response.Id = jsonInput.Id
+		*jsonOutput = *response
+		
+
+		rpcMethod.rpcServer.logger.Println("json output: ",*jsonOutput)
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.Encode(*jsonOutput)
+			
+	}else {
+
+		*jsonOutput = ResponseParameters{Result: nil, Id: -1, Error : nil}
+
+	}
+
 	
 	
 	return nil
@@ -797,7 +717,7 @@ func (rpcMethod * RPCMethod) ListKeys(jsonInput []byte,jsonOutput *[]byte) error
 
 
 //wrapper to listIDs
-func (rpcMethod * RPCMethod) ListIDs(jsonInput []byte,jsonOutput *[]byte) error{
+func (rpcMethod * RPCMethod) ListIDs(jsonInput RequestParameters,jsonOutput *ResponseParameters) error{
 	//Initialize rpcserver
 	var err error
 	err,rpcMethod.rpcServer = GetRPCServerInstance()
@@ -814,20 +734,7 @@ func (rpcMethod * RPCMethod) ListIDs(jsonInput []byte,jsonOutput *[]byte) error{
 	
 
 	defer rpcMethod.rpcServer.routineDone()
-	//Unmarshall the request in RequestParameters
-	var reqPar RequestParameters
-	/*
-	Method string `json:"Method"`
-	Params json.RawMessage `json: "params"`
-	Id int 'json" "id"' 
-        */
-	if err :=json.Unmarshal(jsonInput, &reqPar); err!=nil{
-		customError= errors.New("Message request unmarshalling error:" + err.Error())
-		rpcMethod.rpcServer.logger.Println(customError)
-		return customError
-		
-	}
-	rpcMethod.rpcServer.logger.Println(reqPar.Method)
+	rpcMethod.rpcServer.logger.Println(jsonInput.Method)
 
 	response:=new(ResponseParameters)
 
@@ -842,19 +749,19 @@ func (rpcMethod * RPCMethod) ListIDs(jsonInput []byte,jsonOutput *[]byte) error{
 	//the rest response is set by respective method 
 	//inserOrUpdate / delete / shutdown does not return anything
 	if response !=nil{
-		response.Id = reqPar.Id
+		response.Id = jsonInput.Id
+		*jsonOutput = *response
 		
-		//var jsonOutputTemp []byte
-		var err error
-		if (*jsonOutput), err = json.Marshal(response); err!=nil{
-			rpcMethod.rpcServer.logger.Println(err)
-			return err
-		}
-		rpcMethod.rpcServer.logger.Println(string(*jsonOutput))
+		
+		rpcMethod.rpcServer.logger.Println("json output: ",*jsonOutput)
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.Encode(*jsonOutput)
+			
 	}else {
-		(*jsonOutput),_ = json.Marshal(&ResponseParameters{Result: nil, Id: -1, Error : nil})
+		
+		*jsonOutput = ResponseParameters{Result: nil, Id: -1, Error : nil}
+		
 	}
-	
 	
 	
 	return nil
@@ -862,7 +769,7 @@ func (rpcMethod * RPCMethod) ListIDs(jsonInput []byte,jsonOutput *[]byte) error{
 }
 
 //wrapper to lookup
-func (rpcMethod * RPCMethod) Lookup(jsonInput []byte,jsonOutput *[]byte) error{
+func (rpcMethod * RPCMethod) Lookup(jsonInput RequestParameters,jsonOutput *ResponseParameters) error{
 	//Initialize rpcserver
 	var err error
 	err,rpcMethod.rpcServer = GetRPCServerInstance()
@@ -879,45 +786,33 @@ func (rpcMethod * RPCMethod) Lookup(jsonInput []byte,jsonOutput *[]byte) error{
 	
 
 	defer rpcMethod.rpcServer.routineDone()
-	//Unmarshall the request in RequestParameters
-	var reqPar RequestParameters
-	/*
-	Method string `json:"Method"`
-	Params json.RawMessage `json: "params"`
-	Id int 'json" "id"' 
-        */
-	if err :=json.Unmarshal(jsonInput, &reqPar); err!=nil{
-		customError= errors.New("Message request unmarshalling error:" + err.Error())
-		rpcMethod.rpcServer.logger.Println(customError)
-		return customError
-		
-	}
-	rpcMethod.rpcServer.logger.Println(reqPar.Method)
+	rpcMethod.rpcServer.logger.Println(jsonInput)
 
 	response:=new(ResponseParameters)
 
-	if err :=rpcMethod.lookup(reqPar.Params,response); err!=nil{
+	if err :=rpcMethod.lookup(jsonInput.Params,response); err!=nil{
 		rpcMethod.rpcServer.logger.Println(err)
 		response.Result[0] = err
-			response.Error = 1
-		//return err
+		response.Error = 1
+
 	}
 	
 	//just set ID over here
 	//the rest response is set by respective method 
 	//inserOrUpdate / delete / shutdown does not return anything
 	if response !=nil{
-		response.Id = reqPar.Id
+		response.Id = jsonInput.Id
+		*jsonOutput = *response
 		
-		//var jsonOutputTemp []byte
-		var err error
-		if (*jsonOutput), err = json.Marshal(response); err!=nil{
-			rpcMethod.rpcServer.logger.Println(err)
-			return err
-		}
-		rpcMethod.rpcServer.logger.Println(string(*jsonOutput))
+
+		rpcMethod.rpcServer.logger.Println("json output: ",*jsonOutput)
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.Encode(*jsonOutput)
+			
 	}else {
-		(*jsonOutput),_ = json.Marshal(&ResponseParameters{Result: nil, Id: -1, Error : nil})
+
+		*jsonOutput = ResponseParameters{Result: nil, Id: -1, Error : nil}
+
 	}
 	
 	
@@ -927,131 +822,6 @@ func (rpcMethod * RPCMethod) Lookup(jsonInput []byte,jsonOutput *[]byte) error{
 }
 /*****************************Exposed Wrappers to actual methods Ends**********************************************/
 
-
-// /*
-// create multiple methods:
-// each method will receive the whole the whole json string
-// strip the string and check if the method param is same
-// */
-// func (rpcMethod *RPCMethod) DICT3Service(jsonInput []byte,jsonOutput *[]byte) error{
-	
-// 	//Initialize rpcserver
-// 	var err error
-// 	err,rpcMethod.rpcServer = GetRPCServerInstance()
-// 	var customError error
-// 	if err!=nil{
-// 		customError = errors.New("Getting Server Instance error :" + err.Error())
-// 		fmt.Println(customError)
-// 		return customError
-// 	}
-	
-// 	rpcMethod.rpcServer.wgLock.Lock()
-// 	rpcMethod.rpcServer.wg.Add(1)
-// 	rpcMethod.rpcServer.wgLock.Unlock()
-	
-
-// 	defer rpcMethod.rpcServer.routineDone()
-// 	//Unmarshall the request in RequestParameters
-// 	var reqPar RequestParameters
-// 	/*
-// 	Method string `json:"Method"`
-// 	Params json.RawMessage `json: "params"`
-// 	Id int 'json" "id"' 
-//         */
-// 	if err :=json.Unmarshal(jsonInput, &reqPar); err!=nil{
-// 		customError= errors.New("Message request unmarshalling error:" + err.Error())
-// 		fmt.Println(customError)
-// 		return customError
-		
-// 	}
-// 	fmt.Println(reqPar.Method)
-
-// 	response:=new(ResponseParameters)
-
-// 	//do matching of methods in config	
-// 	switch reqPar.Method{
-//  	case "insert": 	
-// 		if err :=rpcMethod.insert(reqPar.Params,response); err!=nil{
-// 			fmt.Println(err)
-// 			response.Result = make([]interface{},1)
-// 			response.Result[0] = err
-// 			response.Error = 1
-// 			//return err
-// 		}
-// 	case "shutdown":  
-// 		if err :=rpcMethod.shutDown(); err!=nil{
-// 			response.Result = make([]interface{},1)
-// 			response.Result[0] = err
-// 			response.Error = 1
-			
-// 			//return err
-// 		}
-		
-// 		//make response nil
-// 		response = nil
-// 	case "lookup":
-// 		if err :=rpcMethod.lookup(reqPar.Params,response); err!=nil{
-// 			fmt.Println(err)
-// 			response.Result[0] = err
-// 			response.Error = 1
-// 			//return err
-// 		}
-// 	case "insertOrUpdate":
-// 		if err :=rpcMethod.insertOrUpdate(reqPar.Params); err!=nil{
-// 			//even though error, we are not returning anything
-// 			fmt.Println(err)
-// 		}
-// 		response = nil
-
-		
-// 	case "delete":
-// 		if err :=rpcMethod.delete(reqPar.Params); err!=nil{
-// 			fmt.Println(err)
-// 			response.Result[0] = err
-// 			response.Error = 1
-// 			//return err
-// 		}
-// 	case "listKeys":
-// 		if err :=rpcMethod.listKeys(response); err!=nil{
-// 			fmt.Println(err)
-// 			response.Result[0] = err
-// 			response.Error = 1
-// 		}
-// 	case "listIDs":
-// 		if err :=rpcMethod.listIDs(response); err!=nil{
-// 			fmt.Println(err)
-// 			response.Result[0] = err
-// 			response.Error = 1
-// 		}
-
-// 	default:
-// 		customError = errors.New("Request Message could not be understood")
-// 		fmt.Println(customError)
-// 		return customError
-
-// 	} 
-	
-// 	//just set ID over here
-// 	//the rest response is set by respective method 
-// 	//inserOrUpdate / delete / shutdown does not return anything
-// 	if response !=nil{
-// 		response.Id = reqPar.Id
-		
-// 		//var jsonOutputTemp []byte
-// 		var err error
-// 		if (*jsonOutput), err = json.Marshal(response); err!=nil{
-// 			fmt.Println(err)
-// 			return err
-// 		}
-// 		fmt.Println(string(*jsonOutput))
-// 	}else {
-// 		(*jsonOutput),_ = json.Marshal(&ResponseParameters{Result: nil, Id: 0, Error : 0})
-// 	}
-	
-	
-	
-// 	return nil
-// }
 
 /*****************************Server Helper Routines start**********************************************/
 
@@ -1136,10 +906,17 @@ func (rpcServer *RPCServer)CreateServer() error{
 	
 	
 	//will use http protocol
-	rpc.HandleHTTP()
+	//rpc.HandleHTTP()
+	
 	rpcServer.logger.Println(rpcServer.configObject.Protocol,":" + strconv.Itoa(rpcServer.configObject.Port))
+	tcpAddr, err := net.ResolveTCPAddr(rpcServer.configObject.Protocol,":" + strconv.Itoa(rpcServer.configObject.Port))
+	if err!=nil {
+		rpcServer.logger.Println(err)
+		return err
+	}
+	
 	//listen on port
-	listener, err := net.Listen(rpcServer.configObject.Protocol, ":" + strconv.Itoa(rpcServer.configObject.Port))
+	listener, err := net.ListenTCP(rpcServer.configObject.Protocol, tcpAddr)
 	if err!=nil {
 		rpcServer.logger.Println(err)
 		return err

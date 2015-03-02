@@ -13,24 +13,19 @@ import(
 )
 
 //structure for parsing Response from server
+
 type ResponseParameters struct{
-	Result json.RawMessage `json:"result"`
-	Id int `json: "id,omitempty"`
-	Error interface{} `json:"error"`
-}
-
-type ConsoleParameters struct{
 	Result []interface{} `json:"result"`
-	Id int `json: "id,omitempty"`
+	Id int `json: ",omitempty"`
 	Error interface{} `json:"error"`
-
 }
-//structure for getting the request name
 
+//structure for getting the request name
 type RequestParameters struct{
-	Method string `json:"Method"`
-	Params json.RawMessage `json: "params"`
-	Id int `json" "id"` 
+	Method string `json:"method,omitempty"`
+	//Params json.RawMessage `json: "params"`
+	Params []interface{} `json: "params"`
+	Id int `json:",omitempty"` 
 }
 
 //structure for parsing config file
@@ -114,24 +109,41 @@ func extractMethodName(byteRequest []byte,rpcFunction *string) (error){
 //create Asynchronous RPC calls
 func (client * RPCClient)CreateAsyncRPC(jsonMessages []string, serverName string) error{
 	var byteRequest []byte
-	var response []byte
+
 	
 	//directly send jsonmessages to the server asynchronously
 	var rpcFunction string
 	for _,request :=range jsonMessages {
-	//for _,request :=range jsonMessages[1:] {	
-		//fmt.Println(request)
+	
 		byteRequest = []byte(request)
+
+		var reqPar RequestParameters
+		/*
+	        Method string `json:"Method"`
+	        Params json.RawMessage `json: "params"`
+	        Id int 'json" "id"' 
+                */
+		//fmt.Println("Request: ",request)
+		if err :=json.Unmarshal(byteRequest, &reqPar); err!=nil{
+			customError:= errors.New("Message request unmarshalling error:" + err.Error())
+			fmt.Println(customError)
+			return customError
+		
+		}
+		
+		//fmt.Println("Request",reqPar)
 		if err :=extractMethodName(byteRequest,&rpcFunction); err!=nil{
 			fmt.Println(err)
 			return err
 		}
 		rpcServerAndFunction := serverName + "." + rpcFunction
-		replyCall :=client.connection.Go(rpcServerAndFunction,byteRequest,&response,client.doneChan)
+		response := new(ResponseParameters)
 
-		if replyCall.Error!=nil{
-			return replyCall.Error 
-		}
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.Encode(reqPar)
+
+		client.connection.Go(rpcServerAndFunction,reqPar,response,client.doneChan)
+		
 	}
 	return nil
 	
@@ -147,52 +159,19 @@ func (client *RPCClient)ProcessReplies(numRequests int)error{
 		select{
 			//case when channel has got a call object 
 		case replyCall := <- client.doneChan:
-			//fmt.Println(string((replyCall.Args).([]byte)))
 			
-		
 			if replyCall.Error !=nil{
 				fmt.Println(replyCall.Error)
 				return replyCall.Error 
 			}
-			//unmarshall the response parameter
-			parameters := new(ResponseParameters)
-			if err:=json.Unmarshal(*(replyCall.Reply).(*[]byte),parameters);err!=nil{
-				fmt.Println(err)
-				return err
-			
-			}
-
-			
-			//the result parameter is returned as array of interface and parsed as raw json in the above
-			//call. Unmarshall this raw json into array of interfaces
-			var resultParameter []interface{}
-			if err:=json.Unmarshal((*parameters).Result, &resultParameter); err!=nil{
-				fmt.Println(err)
-				return err
-			}
-			
-			//this array of interfaces has to be parsed according to the type of request 
-			// for eg. insert or lookup
-			//for k,v := range resultParameter{
-			//	fmt.Println(k,v)
-			//}			
-			
-			//fmt.Println(*parameters)
-			//fmt.Println(string((*parameters).Result))
-
-
-			//fmt.Println("Using Encoder")
-			var cp = ConsoleParameters{}
-			cp.Result= resultParameter
-			cp.Id = parameters.Id
-			cp.Error = parameters.Error
+			//fmt.Println("reply:", *(replyCall.Reply).(*ResponseParameters))
 			encoder := json.NewEncoder(os.Stdout)
-			encoder.Encode(cp)
+			encoder.Encode(replyCall.Reply)
 			//initialize timout
 			timeout = time.After(10000 * time.Millisecond)
 		case <-timeout:
 			fmt.Println("Timed Out")
-	
+			
 		}
 		
 	}
