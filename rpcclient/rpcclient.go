@@ -160,7 +160,8 @@ func (client *RPCClient) ProcessReplies(numRequests int) error {
 
 			if replyCall.Error != nil {
 				fmt.Println(replyCall.Error)
-				return replyCall.Error
+				continue
+				//return replyCall.Error
 			}
 			//fmt.Println("reply:", *(replyCall.Reply).(*ResponseParameters))
 			encoder := json.NewEncoder(os.Stdout)
