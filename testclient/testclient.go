@@ -23,6 +23,7 @@ func main(){
 	numChannels := 10
 	network := configObject.Protocol
 	address := configObject.IpAddress + ":" + strconv.Itoa(configObject.Port)
+	serverName := configObject.ServerID
 	client := &rpcclient.RPCClient{}
 	
 	//create new client
@@ -33,7 +34,7 @@ func main(){
 	} 
 	
 	//make asychronous calls
-	if err := client.CreateAsyncRPC(os.Args[2:]); err!=nil{
+	if err := client.CreateAsyncRPC(os.Args[2:], serverName); err!=nil{
 		fmt.Println(err)
 		return
 	}
