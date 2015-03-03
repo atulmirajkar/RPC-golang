@@ -1,0 +1,14 @@
+log: 2015/03/02 16:55:07 In createserver
+log: 2015/03/02 16:55:07 AtulServer
+log: 2015/03/02 16:55:07 tcp :1234
+log: 2015/03/02 17:02:08 listKeys
+log: 2015/03/02 17:02:08 BUCKET  keyA
+log: 2015/03/02 17:02:08 BUCKET  keyB
+log: 2015/03/02 17:02:08 json output:  {[keyA keyB] 11 <nil>}
+log: 2015/03/02 17:02:08 shutdown
+log: 2015/03/02 17:02:08 0xc2080924e8
+log: 2015/03/02 17:02:08 {{0 0} 1 0 <nil>}
+log: 2015/03/02 17:02:08  in shutdown
+log: 2015/03/02 17:02:08 json output:  {[] 12 <nil>}
+log: 2015/03/02 17:02:08 Closing Connection
+log: 2015/03/02 17:02:08 accept tcp [::]:1234: use of closed network connection

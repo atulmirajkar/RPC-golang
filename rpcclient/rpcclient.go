@@ -96,9 +96,13 @@ func extractMethodName(byteRequest []byte, rpcFunction *string) error {
 
 	}
 	//check if it ins in the list of methd names
-
-	(*rpcFunction) = string(reqPar.Method[0]-'a'+65) + reqPar.Method[1:]
-
+	firstLetter :=  reqPar.Method[0]
+	if firstLetter>=97 && firstLetter <=122{
+		(*rpcFunction) = string(reqPar.Method[0]-'a'+65) + reqPar.Method[1:]
+	}else{
+		(*rpcFunction) = reqPar.Method
+	}
+	
 	return nil
 
 }
@@ -137,8 +141,8 @@ func (client *RPCClient) CreateAsyncRPC(jsonMessages []string, serverName string
 		rpcServerAndFunction := serverName + "." + rpcFunction
 		response := new(ResponseParameters)
 
-		encoder := json.NewEncoder(os.Stdout)
-		encoder.Encode(reqPar)
+		//encoder := json.NewEncoder(os.Stdout)
+		//encoder.Encode(reqPar)
 
 		client.connection.Go(rpcServerAndFunction, reqPar, response, client.doneChan)
 
@@ -170,7 +174,7 @@ func (client *RPCClient) ProcessReplies(numRequests int) error {
 			timeout = time.After(10000 * time.Millisecond)
 		case <-timeout:
 			fmt.Println("Timed Out")
-
+			
 		}
 
 	}
