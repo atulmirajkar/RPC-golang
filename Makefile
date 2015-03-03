@@ -14,6 +14,12 @@ build:
 	mkdir -p $(GOPATH)/src/github.com/atulmirajkar/RPC-golang
 	cp -r ./* $(GOPATH)/src/github.com/atulmirajkar/RPC-golang 
 
+client: build
+	go install testclient/testclient.go
+
+server: deps build
+	go install testserver/testserver.go
+
 format:
 	go fmt $(PACKAGES)
 
@@ -21,7 +27,7 @@ deps:
 	go get $(DEPENDENCIES)
 
 clean:
-	go clean -i -r -x $(PACKAGES) $(DEPENDENCIES)
+	go clean -i -r  $(PACKAGES) $(DEPENDENCIES)
 	rm -rf $(GOBIN)/testclient
 	rm -rf $(GOBIN)/testserver
 	rm -rf $(GOPATH)/src/github.com/atulmirajkar
