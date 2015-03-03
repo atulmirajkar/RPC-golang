@@ -27,7 +27,7 @@ deps:
 	go get $(DEPENDENCIES)
 
 clean:
-	go clean -i -r  $(PACKAGES) $(DEPENDENCIES)
+	go clean  $(PACKAGES) $(DEPENDENCIES)
 	rm -rf $(GOBIN)/testclient
 	rm -rf $(GOBIN)/testserver
 	rm -rf $(GOPATH)/src/github.com/atulmirajkar
