@@ -27,6 +27,13 @@ type RequestParameters struct {
 	Id     int           `json:",omitempty"`
 }
 
+//to manage inserts
+type ResponseParametersInsert struct {
+	Result interface{} `json:"result"`
+	Id     int           `json: "id,omitempty"`
+	Error  interface{}   `json:"error"`
+}
+
 //structure for parsing config file
 type ConfigType struct {
 	ServerID  string   `json:"serverID"`
@@ -139,11 +146,17 @@ func (client *RPCClient) CreateAsyncRPC(jsonMessages []string, serverName string
 			continue
 		}
 		rpcServerAndFunction := serverName + "." + rpcFunction
-		response := new(ResponseParameters)
+		
 
 		//encoder := json.NewEncoder(os.Stdout)
 		//encoder.Encode(reqPar)
-
+		var response interface{}
+	
+		if rpcFunction=="Insert"{
+			response = new(ResponseParametersInsert)	
+		}else{
+			response = new(ResponseParameters)	
+		}
 		client.connection.Go(rpcServerAndFunction, reqPar, response, client.doneChan)
 
 	}
